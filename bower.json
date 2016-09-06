@@ -1,0 +1,20 @@
+{
+  "name": "cordova-oauth",
+  "authors": [
+    "ffernnadez@bbva.com"
+  ],
+  "description": "Polymer component for oauth in cordova apps",
+  "main": "cordova-oauth.html",
+  "keywords": ["web-components"],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+   "dependencies": {
+    "polymer": "Polymer/polymer#^1.0.0",
+    "iron-ajax": "PolymerElements/iron-ajax#^1.0.0"
+  }
+}
