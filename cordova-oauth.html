@@ -4,101 +4,105 @@
 
 <dom-module id="cordova-oauth">
 
-	<template>
-		<iron-ajax id="token_ajax"
-			method="POST"
-			content-type="application/x-www-form-urlencoded"
-		    url="{{oauth_token_url}}}"
-		    handle-as="json"
-		    on-response="handleResponse">
-		</iron-ajax>
-	</template>
+  <template>
+    <iron-ajax id="token_ajax"
+      method="POST"
+      content-type="application/x-www-form-urlencoded"
+        url="{{oauth_token_url}}}"
+        handle-as="json"
+        on-response="handleResponse">
+    </iron-ajax>
+  </template>
 
-	<script>
-	  Polymer({
-	    is: 'cordova-oauth',
-		  properties: {
+  <script>
+    Polymer({
+      is: 'cordova-oauth',
+      properties: {
         client_id: String,
         client_secret: String,
         oauth_token_url: String,
+        scope: String,
         oauth_authorization_url: String,
         token: {
-	        type: String,
-	        notify: true
-	      }
+          type: String,
+          notify: true
+        }
       },
       compute_params: function(code, client_id, client_secret, grant, refresh){
-  			var params = {};
-  			if (refresh) {
-  				params['refresh_token'] = refresh;
-  			}
-  			if (code) {
-  				params['code'] = code;
-  				params['redirect_uri'] = 'http://localhost';
-  			}
-  			if (client_id) {
-  				params['client_id'] = client_id;
-  			}
-  			if (client_secret) {
-  				params['client_secret'] = client_secret;
-  			}
-  			params['grant_type'] = grant;
+        var params = {};
+        if (refresh) {
+          params['refresh_token'] = refresh;
+        }
+        if (code) {
+          params['code'] = code;
+          params['redirect_uri'] = 'http://localhost';
+        }
+        if (client_id) {
+          params['client_id'] = client_id;
+        }
+        if (client_secret) {
+          params['client_secret'] = client_secret;
+        }
+        params['grant_type'] = grant;
         return params;
       },
       signIn: function(){
-      	this.getToken();
+        this.getToken();
       },
       getToken: function(options) {
 
-      	if (new Date().getTime() < parseInt(localStorage.expires_at)) {
+        if (new Date().getTime() < parseInt(localStorage.expires_at)) {
           this.token= localStorage.access_token
-      	}else {
-      		if (localStorage.refresh_token) {
-      			//we can refresh the token
-          	this.$.token_ajax.body=this.compute_params(false,this.client_id,this.client_secret,'refresh_token',localStorage.refresh_token);
-          	//this.code=code[1];
-          	this.$.token_ajax.generateRequest();
-      		}else{
-      			//Its the first time, we need to ask for permisssions
+        }else {
+          if (localStorage.refresh_token) {
+            //we can refresh the token
+            this.$.token_ajax.body=this.compute_params(false,this.client_id,this.client_secret,'refresh_token',localStorage.refresh_token);
+            //this.code=code[1];
+            this.$.token_ajax.generateRequest();
+          }else{
+            //Its the first time, we need to ask for permisssions
 
-		        //Build the OAuth consent page URL
-		        var authUrl = this.oauth_authorization_url+
-	            'client_id=' + this.client_id +'&'+
-	            'redirect_uri=' + 'http://localhost' +'&'+
-	            'response_type=code' +'&'+
-	            'scope=' + 'email https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.profile'; //poner aqui los scopes!!!
+            //Build the OAuth consent page URL
+            var authUrl = this.oauth_authorization_url + '?' +
+              'client_id=' + this.client_id +'&'+
+              'redirect_uri=' + 'http://localhost' +'&'+
+              'response_type=code';
+              if(this.scope){                
+               authUrl= authUrl +'&'+ 'scope=' + this.scope;
+              }
+              
 
 
-		        //Open the OAuth consent page in the InAppBrowser
-		        var authWindow = window.open(authUrl, '_blank', 'location=no,toolbar=no');
+            //Open the OAuth consent page in the InAppBrowser
+            var authWindow = window.open(authUrl, '_blank', 'location=no,toolbar=no');
 
-				    authWindow.addEventListener('loadstart', googleCallback);
+            authWindow.addEventListener('loadstart', googleCallback);
 
-    				var ajaxobj=this.$.token_ajax;
-    				compute=this.compute_params;
-    				var me=this;
-    				function googleCallback (e){
-		            var url = (typeof e.url !== 'undefined' ? e.url : e.originalEvent.url);
-		            var code = /\?code=(.+)$/.exec(url);
-		            var error = /\?error=(.+)$/.exec(url);
+            var ajaxobj=this.$.token_ajax;
+            compute=this.compute_params;
+            var me=this;
+            function googleCallback (e){
+                var url = (typeof e.url !== 'undefined' ? e.url : e.originalEvent.url);
+                var code = /\?code=(.+)$/.exec(url);
+                var error = /\?error=(.+)$/.exec(url);
 
-		            if (code || error) {
-		                //Always close the browser when match is found
-		                authWindow.close();
-		            }
-		            if (code) {
-		            	ajaxobj.body=compute(code[1],me.client_id,me.client_secret,'authorization_code',false);
-		            	//this.code=code[1];
-		            	ajaxobj.generateRequest();
-		            }
-		        }
-		    }
-	    }
+                if (code || error) {
+                    //Always close the browser when match is found
+                    authWindow.close();
+                }
+                if (code) {
+                  ajaxobj.body=compute(code[1],me.client_id,me.client_secret,'authorization_code',false);
+                  //this.code=code[1];
+                  ajaxobj.generateRequest();
+                }
+            }
+        }
+      }
     },
-		handleResponse: function(request) {
-			if (request.detail.response.access_token) {
-				this.token=request.detail.response.access_token;
-				//Cache the token
+    handleResponse: function(request) {
+      if (request.detail.response.access_token) {
+        this.token=request.detail.response.access_token;
+        //Cache the token
         localStorage.access_token = this.token;
         localStorage.id_token = request.detail.response.id_token;
         //Cache the refresh token, if there is one
@@ -109,8 +113,8 @@
         //time, plus the valid time (in seconds), minus a 1 minute buffer
         var expiresAt = new Date().getTime() + parseInt(request.detail.response.expires_in, 10) * 1000 - 60000;
         localStorage.expires_at = expiresAt;
-			}
-		}
-	  });
-	</script>
+      }
+    }
+    });
+  </script>
 </dom-module>
