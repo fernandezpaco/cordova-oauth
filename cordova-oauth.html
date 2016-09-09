@@ -6,115 +6,144 @@
 
   <template>
     <iron-ajax id="token_ajax"
-      method="POST"
-      content-type="application/x-www-form-urlencoded"
-        url="{{oauth_token_url}}}"
-        handle-as="json"
-        on-response="handleResponse">
-    </iron-ajax>
-  </template>
+    method="POST"
+    content-type="application/x-www-form-urlencoded"
+    url="{{oauth_token_url}}"        
+    handle-as="json"
+    on-response="handleResponse">
+  </iron-ajax>
+</template>
 
-  <script>
-    Polymer({
-      is: 'cordova-oauth',
-      properties: {
-        client_id: String,
-        client_secret: String,
-        oauth_token_url: String,
-        scope: String,
-        oauth_authorization_url: String,
-        token: {
-          type: String,
-          notify: true
-        }
+<script>
+  Polymer({
+    is: 'cordova-oauth',
+    properties: {
+      client_id: String,
+      client_secret: String,
+      oauth_token_url: String,
+      oauth_authorization_url: String,
+      scopes: String,
+      redirect_uri: {
+        type: String,
+        value: "http://localhost"
       },
-      compute_params: function(code, client_id, client_secret, grant, refresh){
-        var params = {};
-        if (refresh) {
-          params['refresh_token'] = refresh;
-        }
-        if (code) {
-          params['code'] = code;
-          params['redirect_uri'] = 'http://localhost';
-        }
-        if (client_id) {
-          params['client_id'] = client_id;
-        }
-        if (client_secret) {
-          params['client_secret'] = client_secret;
-        }
-        params['grant_type'] = grant;
-        return params;
+      access_token: {
+        type: String,
+        notify: true
       },
-      signIn: function(){
-        this.getToken();
-      },
-      getToken: function(options) {
+      id_token: {
+        type: String,
+        notify: true
+      }
 
-        if (new Date().getTime() < parseInt(localStorage.expires_at)) {
-          this.token= localStorage.access_token
-        }else {
-          if (localStorage.refresh_token) {
-            //we can refresh the token
-            this.$.token_ajax.body=this.compute_params(false,this.client_id,this.client_secret,'refresh_token',localStorage.refresh_token);
-            //this.code=code[1];
-            this.$.token_ajax.generateRequest();
-          }else{
-            //Its the first time, we need to ask for permisssions
+    },
+    ready: function(){
+      localStorage.oauth_token_url={};
+    },
+    compute_params: function(code, client_id, client_secret, grant, refresh, redirect_uri){
+      var params = {};
+      if (refresh) {
+        params['refresh_token'] = refresh;
+      }         
+      if (code) {
+        params['code'] = code;
+        params['redirect_uri'] = redirect_uri;
+      }         
+      if (client_id) {
+        params['client_id'] = client_id;
+      }         
+      if (client_secret) {
+        params['client_secret'] = client_secret;
+      }  
+      params['grant_type'] = grant;
 
-            //Build the OAuth consent page URL
-            var authUrl = this.oauth_authorization_url + '?' +
+      return params;
+    },
+    _expires: function(){
+      //if(localStorage.oauth_token_url && localStorage.oauth_token_url.expires_at)
+      return localStorage.oauth_token_url.expires_at;
+    },
+    _access: function(){
+      //if(localStorage.oauth_token_url && localStorage.oauth_token_url.access_token)
+      return localStorage.oauth_token_url.access_token;
+    },
+    _id: function(){
+      //if(localStorage.oauth_token_url && localStorage.oauth_token_url.id_token)
+      return localStorage.oauth_token_url.id_token;
+    },
+    _refresh: function(){
+      //if(localStorage.oauth_token_url && localStorage.oauth_token_url.refresh_token)
+      return localStorage.oauth_token_url.refresh_token;
+    },
+    signIn: function() {
+      if (new Date().getTime() < parseInt(this._expires())) {
+        this.access_token= this._access();
+        this.id_token= this._id();
+      }else{
+        if(this._refresh()){
+              //we can refresh the token
+
+              this.$.token_ajax.body=this.compute_params(false,this.client_id,this.client_secret,'refresh_token',this._refresh(), this.redirect_uri);
+                //this.code=code[1];
+                this.$.token_ajax.generateRequest();                    
+
+              }else{
+              //Its the first time, we need to ask for permisssions
+
+              //Build the OAuth consent page URL
+              var authUrl = this.oauth_authorization_url + '?' +
               'client_id=' + this.client_id +'&'+
-              'redirect_uri=' + 'http://localhost' +'&'+
+              'redirect_uri=' + this.redirect_uri +'&'+
               'response_type=code';
-              if(this.scope){                
-               authUrl= authUrl +'&'+ 'scope=' + this.scope;
-              }
-              
+              if(this.scopes)
+                authUrl+='&scope=' + this.scopes;
 
+              //Open the OAuth consent page in the InAppBrowser
+              var authWindow = window.open(authUrl, '_blank', 'location=no,toolbar=no');
 
-            //Open the OAuth consent page in the InAppBrowser
-            var authWindow = window.open(authUrl, '_blank', 'location=no,toolbar=no');
+              authWindow.addEventListener('loadstart', authorizeCallback);
 
-            authWindow.addEventListener('loadstart', googleCallback);
-
-            var ajaxobj=this.$.token_ajax;
-            compute=this.compute_params;
-            var me=this;
-            function googleCallback (e){
+              var ajaxobj=this.$.token_ajax;
+              compute=this.compute_params;
+              var me=this;
+              function authorizeCallback (e){
                 var url = (typeof e.url !== 'undefined' ? e.url : e.originalEvent.url);
                 var code = /\?code=(.+)$/.exec(url);
                 var error = /\?error=(.+)$/.exec(url);
 
                 if (code || error) {
-                    //Always close the browser when match is found
-                    authWindow.close();
+                      //Always close the browser when match is found
+                      authWindow.close();
+                    }
+
+                    if (code) {
+                      ajaxobj.body=compute(code[1],me.client_id,me.client_secret,'authorization_code',false, me.redirect_uri);
+                    //this.code=code[1];
+                    ajaxobj.generateRequest();                    
+                  }
                 }
-                if (code) {
-                  ajaxobj.body=compute(code[1],me.client_id,me.client_secret,'authorization_code',false);
-                  //this.code=code[1];
-                  ajaxobj.generateRequest();
-                }
+              }
             }
-        }
-      }
-    },
-    handleResponse: function(request) {
-      if (request.detail.response.access_token) {
-        this.token=request.detail.response.access_token;
-        //Cache the token
-        localStorage.access_token = this.token;
-        localStorage.id_token = request.detail.response.id_token;
-        //Cache the refresh token, if there is one
-        if (request.detail.response.refresh_token) {
-          localStorage.refresh_token =  request.detail.response.refresh_token;
-        }
-        //Figure out when the token will expire by using the current
-        //time, plus the valid time (in seconds), minus a 1 minute buffer
-        var expiresAt = new Date().getTime() + parseInt(request.detail.response.expires_in, 10) * 1000 - 60000;
-        localStorage.expires_at = expiresAt;
-      }
-    }
-    });
-  </script>
-</dom-module>
+          },
+          handleResponse: function(request){
+            if(request.detail.response.access_token){
+              this.access_token=request.detail.response.access_token;
+              this.id_token=request.detail.response.id_token;
+
+              //Cache the token
+              localStorage.oauth_token_url.access_token = this.access_token;
+              localStorage.oauth_token_url.id_token = this.id_token;
+              //Cache the refresh token, if there is one
+              if(request.detail.response.refresh_token)
+                localStorage.oauth_token_url.refresh_token =  request.detail.response.refresh_token;
+              //Figure out when the token will expire by using the current
+              //time, plus the valid time (in seconds), minus a 1 minute buffer
+              var expiresAt = new Date().getTime() + parseInt(request.detail.response.expires_in, 10) * 1000 - 60000;
+              localStorage.oauth_token_url.expires_at = expiresAt;
+
+              this.fire('succesful-oauth-signin');
+            }
+          }
+        });
+      </script>
+    </dom-module>
