@@ -101,25 +101,46 @@
               //Open the OAuth consent page in the InAppBrowser
               var authWindow = window.open(authUrl, '_blank', 'location=no,toolbar=no');
 
-              authWindow.addEventListener('loadstart', authorizeCallback);
-
               var ajaxobj=this.$.token_ajax;
               compute=this.compute_params;
               var me=this;
-              function authorizeCallback (e){
-                var url = (typeof e.url !== 'undefined' ? e.url : e.originalEvent.url);
-                var code = /\?code=(.+)$/.exec(url);
-                var error = /\?error=(.+)$/.exec(url);
 
-                if (code || error) {
-                      //Always close the browser when match is found
+              //this is only for testing and debuging out of cordova
+              if(typeof window.cordova === "undefined"){
+
+                function myTimerFunction(){                  
+                    var code = /\?code=(.+)$/.exec(authWindow.location.search);
+                    if(code){
+                      //console.log(code);  
                       authWindow.close();
-                    }
 
-                    if (code) {
                       ajaxobj.body=compute(code[1],me.client_id,me.client_secret,'authorization_code',false, me.redirect_uri);
-                    //this.code=code[1];
-                    ajaxobj.generateRequest();                    
+                      //this.code=code[1];
+                      ajaxobj.generateRequest(); 
+                    }else{                  
+                      setTimeout(myTimerFunction, 100);      
+                    }
+                };
+                myTimerFunction();
+              }else{
+
+                authWindow.addEventListener('loadstart', authorizeCallback);
+
+                function authorizeCallback (e){
+                  var url = (typeof e.url !== 'undefined' ? e.url : e.originalEvent.url);
+                  var code = /\?code=(.+)$/.exec(url);
+                  var error = /\?error=(.+)$/.exec(url);
+
+                  if (code || error) {
+                        //Always close the browser when match is found
+                        authWindow.close();
+                      }
+
+                      if (code) {
+                        ajaxobj.body=compute(code[1],me.client_id,me.client_secret,'authorization_code',false, me.redirect_uri);
+                      //this.code=code[1];
+                      ajaxobj.generateRequest();                    
+                    }
                   }
                 }
               }
