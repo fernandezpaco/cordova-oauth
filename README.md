@@ -24,7 +24,7 @@ Example for google and imgur signin.
     "oauth_token_url": "https://accounts.google.com/o/oauth2/token",
     "oauth_authorization_url": "https://accounts.google.com/o/oauth2/auth",
     acces_token="{{oauth_access_token_returned}}"
-    id_token="{{oauth_access_token_returned}}">
+    id_token="{{oauth_id_token_returned}}">
  </cordova-oauth>
   <script type="text/javascript">
 	document.addEventListener("deviceready", onDeviceReady, false);
