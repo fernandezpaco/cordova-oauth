@@ -109,7 +109,13 @@
               if(typeof window.cordova === "undefined"){
 
                 function myTimerFunction(){                  
-                    var code = /\?code=(.+)$/.exec(authWindow.location.search);
+                    var code;
+                    try{
+                      code = /\?code=(.+)$/.exec(authWindow.location.search);
+                    }catch(e){
+                      return;
+                    }
+                    
                     if(code){
                       //console.log(code);  
                       authWindow.close();
