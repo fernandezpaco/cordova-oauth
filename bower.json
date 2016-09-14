@@ -3,7 +3,7 @@
   "authors": [
     "ffernnadez@bbva.com"
   ],
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Polymer component for oauth in cordova apps",
   "main": "cordova-oauth.html",
   "keywords": ["web-components"],
