@@ -37,8 +37,18 @@
       }
 
     },
-    ready: function(){
-      localStorage.oauth_token_url={};
+    readObject: function(key){
+      var val=localStorage.getItem(key);
+      if(!val){
+        this.writeObject(key,{});
+        val={};
+      }else{
+        val=JSON.parse(val);
+      }
+      return val;
+    },
+    writeObject: function(key,val){
+      localStorage.setItem(key,JSON.stringify(val));
     },
     compute_params: function(code, client_id, client_secret, grant, refresh, redirect_uri){
       var params = {};
@@ -61,24 +71,25 @@
     },
     _expires: function(){
       //if(localStorage.oauth_token_url && localStorage.oauth_token_url.expires_at)
-      return localStorage.oauth_token_url.expires_at;
+      return this.readObject(this.oauth_token_url).expires_at;
     },
     _access: function(){
       //if(localStorage.oauth_token_url && localStorage.oauth_token_url.access_token)
-      return localStorage.oauth_token_url.access_token;
+      return this.readObject(this.oauth_token_url).access_token;
     },
     _id: function(){
       //if(localStorage.oauth_token_url && localStorage.oauth_token_url.id_token)
-      return localStorage.oauth_token_url.id_token;
+      return this.readObject(this.oauth_token_url).id_token;
     },
     _refresh: function(){
       //if(localStorage.oauth_token_url && localStorage.oauth_token_url.refresh_token)
-      return localStorage.oauth_token_url.refresh_token;
+      return this.readObject(this.oauth_token_url).refresh_token;
     },
     signIn: function() {
       if (new Date().getTime() < parseInt(this._expires())) {
         this.access_token= this._access();
         this.id_token= this._id();
+        this.fire('succesful-oauth-signin');
       }else{
         if(this._refresh()){
               //we can refresh the token
@@ -157,15 +168,18 @@
               this.id_token=request.detail.response.id_token;
 
               //Cache the token
-              localStorage.oauth_token_url.access_token = this.access_token;
-              localStorage.oauth_token_url.id_token = this.id_token;
+              var cache=this.readObject(this.oauth_token_url);
+              cache.access_token = this.access_token;
+              cache.id_token = this.id_token;
               //Cache the refresh token, if there is one
               if(request.detail.response.refresh_token)
-                localStorage.oauth_token_url.refresh_token =  request.detail.response.refresh_token;
+                cache.refresh_token =  request.detail.response.refresh_token;
               //Figure out when the token will expire by using the current
               //time, plus the valid time (in seconds), minus a 1 minute buffer
               var expiresAt = new Date().getTime() + parseInt(request.detail.response.expires_in, 10) * 1000 - 60000;
-              localStorage.oauth_token_url.expires_at = expiresAt;
+              cache.expires_at = expiresAt;
+
+              this.writeObject(this.oauth_token_url,cache);
 
               this.fire('succesful-oauth-signin');
             }
