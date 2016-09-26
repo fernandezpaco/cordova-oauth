@@ -85,6 +85,10 @@
       //if(localStorage.oauth_token_url && localStorage.oauth_token_url.refresh_token)
       return this.readObject(this.oauth_token_url).refresh_token;
     },
+    reSignIn: function() {
+      localStorage.removeItem(this.oauth_token_url);
+      this.signIn();
+    },
     signIn: function() {
       if (new Date().getTime() < parseInt(this._expires())) {
         this.access_token= this._access();
